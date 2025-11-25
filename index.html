@@ -373,8 +373,10 @@
 
         // Initialize Firebase (guarded)
         let db = null;
-        // Toggle this to `true` to re-enable realtime sync
-        let firebaseEnabled = false;
+        // Toggle this to `true` to enable realtime reads. Writes are controlled separately.
+        let firebaseEnabled = true; // reads-only by default for this test
+        // Set to `true` to allow writes. Keep `false` to make reads-only.
+        let firebaseWritesEnabled = false;
         try {
             if (window.firebase && typeof firebase.initializeApp === 'function' && typeof firebase.database === 'function') {
                 firebase.initializeApp(firebaseConfig);
@@ -541,7 +543,8 @@
 
         // Firebase Sync Functions
         function saveAppToFirebase() {
-            if (!firebaseEnabled) return; // temporarily disabled
+            if (!firebaseEnabled || !firebaseWritesEnabled) { console.log('Firebase save suppressed (reads-only)'); return; }
+            if (!db) { console.warn('Firebase DB not initialized; save skipped'); return; }
             if (isLoadingFromFirebase) return; // don't save while loading
             // Save a copy without functions or DOM refs
             try {
@@ -574,6 +577,7 @@
 
         function loadAppFromFirebase() {
             if (!firebaseEnabled) { console.log('Firebase load skipped (disabled)'); return; }
+            if (!db) { console.log('Firebase load skipped (db not initialized)'); return; }
             isLoadingFromFirebase = true;
             db.ref('app').once('value', snapshot => {
                 if (snapshot.exists()) {
@@ -594,6 +598,7 @@
 
         function listenToFirebaseChanges() {
             if (!firebaseEnabled) { console.log('Firebase listener not started (disabled)'); return; }
+            if (!db) { console.log('Firebase listener not started (db not initialized)'); return; }
             db.ref('app').on('value', snapshot => {
                 if (snapshot.exists() && !isLoadingFromFirebase) {
                     const data = snapshot.val();
