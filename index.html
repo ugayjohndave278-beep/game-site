@@ -355,7 +355,27 @@
 
     <div id="app"></div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
+
     <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyD8CadhUR1Mp-1bc7YBWE5wO5KzyqFXVh4",
+          authDomain: "game-dave.firebaseapp.com",
+          databaseURL: "https://game-dave-default-rtdb.firebaseio.com",
+          projectId: "game-dave",
+          storageBucket: "game-dave.firebasestorage.app",
+          messagingSenderId: "1093948242108",
+          appId: "1:1093948242108:web:5a03f546e173a233a9b8b9"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        let isLoadingFromFirebase = false; // prevent infinite loops
+
         const app = {
             view: 'dashboard',
             showSettings: false,
@@ -505,6 +525,38 @@
             scoringStep: 1
         };
 
+        // Firebase Sync Functions
+        function saveAppToFirebase() {
+            if (isLoadingFromFirebase) return; // don't save while loading
+            db.ref('app').set(app).catch(err => console.error('Firebase save error:', err));
+        }
+
+        function loadAppFromFirebase() {
+            isLoadingFromFirebase = true;
+            db.ref('app').once('value', snapshot => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    Object.assign(app, data);
+                    render();
+                }
+                isLoadingFromFirebase = false;
+            });
+        }
+
+        function listenToFirebaseChanges() {
+            db.ref('app').on('value', snapshot => {
+                if (snapshot.exists() && !isLoadingFromFirebase) {
+                    const data = snapshot.val();
+                    Object.assign(app, data);
+                    render();
+                }
+            });
+        }
+
+        // Load initial data and listen for changes
+        loadAppFromFirebase();
+        setTimeout(listenToFirebaseChanges, 1000); // listen after initial load
+
         function getTotalScore(teams) {
             return teams.reduce((sum, team) => sum + team.score, 0);
         }
@@ -560,6 +612,7 @@
             }, 0);
             
             render();
+            saveAppToFirebase();
         }
 
         function updateMemberScore(category, points) {
@@ -580,6 +633,7 @@
             }, 0);
             
             render();
+            saveAppToFirebase();
         }
 
         function addMember(teamIndex, side) {
@@ -596,6 +650,7 @@
                 }
             });
             render();
+            saveAppToFirebase();
         }
 
         function removeMember(teamIndex, memberIndex, side) {
@@ -603,12 +658,14 @@
             if (teams[teamIndex].members.length > 1) {
                 teams[teamIndex].members.splice(memberIndex, 1);
                 render();
+                saveAppToFirebase();
             }
         }
 
         function updateMemberName(teamIndex, memberIndex, side, newName) {
             const teams = side === 'left' ? app.leftTeams : app.rightTeams;
             teams[teamIndex].members[memberIndex].name = newName;
+            saveAppToFirebase();
         }
 
         function addSubcategory(categoryIndex) {
@@ -618,25 +675,30 @@
                 label: 'New Subcategory'
             });
             render();
+            saveAppToFirebase();
         }
 
         function removeSubcategory(categoryIndex, subIndex) {
             if (app.scoringCategories[categoryIndex].subcategories.length > 1) {
                 app.scoringCategories[categoryIndex].subcategories.splice(subIndex, 1);
                 render();
+                saveAppToFirebase();
             }
         }
 
         function updateSubcategoryLabel(categoryIndex, subIndex, newLabel) {
             app.scoringCategories[categoryIndex].subcategories[subIndex].label = newLabel;
+            saveAppToFirebase();
         }
 
         function updateCategoryLabel(categoryIndex, newLabel) {
             app.scoringCategories[categoryIndex].label = newLabel;
+            saveAppToFirebase();
         }
 
         function updateCategoryIcon(categoryIndex, newIcon) {
             app.scoringCategories[categoryIndex].icon = newIcon;
+            saveAppToFirebase();
         }
 
         function handlePhotoUpload(event) {
@@ -647,6 +709,7 @@
                     const teams = app.selectedKitchen === 'left' ? app.leftTeams : app.rightTeams;
                     teams[app.selectedTeam].photo = e.target.result;
                     render();
+                    saveAppToFirebase();
                 };
                 reader.readAsDataURL(file);
             }
