@@ -374,6 +374,8 @@
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        // Toggle this to `true` to re-enable realtime sync
+        const firebaseEnabled = false;
         let isLoadingFromFirebase = false; // prevent infinite loops
 
         const app = {
@@ -527,6 +529,7 @@
 
         // Firebase Sync Functions
         function saveAppToFirebase() {
+            if (!firebaseEnabled) return; // temporarily disabled
             if (isLoadingFromFirebase) return; // don't save while loading
             // Save a copy without functions or DOM refs
             try {
@@ -558,6 +561,7 @@
         }
 
         function loadAppFromFirebase() {
+            if (!firebaseEnabled) { console.log('Firebase load skipped (disabled)'); return; }
             isLoadingFromFirebase = true;
             db.ref('app').once('value', snapshot => {
                 if (snapshot.exists()) {
@@ -577,6 +581,7 @@
         }
 
         function listenToFirebaseChanges() {
+            if (!firebaseEnabled) { console.log('Firebase listener not started (disabled)'); return; }
             db.ref('app').on('value', snapshot => {
                 if (snapshot.exists() && !isLoadingFromFirebase) {
                     const data = snapshot.val();
@@ -589,9 +594,13 @@
             });
         }
 
-        // Load initial data and listen for changes
-        loadAppFromFirebase();
-        setTimeout(listenToFirebaseChanges, 1000); // listen after initial load
+        // Load initial data and listen for changes (skipped when firebaseEnabled=false)
+        if (firebaseEnabled) {
+            loadAppFromFirebase();
+            setTimeout(listenToFirebaseChanges, 1000); // listen after initial load
+        } else {
+            console.log('Realtime Firebase sync is currently disabled. Set `firebaseEnabled = true` to re-enable.');
+        }
 
         function getTotalScore(teams) {
             return teams.reduce((sum, team) => sum + team.score, 0);
