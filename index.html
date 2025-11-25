@@ -360,9 +360,9 @@
     <!-- <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script> -->
     <!-- <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script> -->
 
-    <script>
-        // Firebase Configuration
-        const firebaseConfig = {
+        <script>
+                // Firebase Configuration (attached to window so module initializer can read it)
+                window.firebaseConfig = {
           apiKey: "AIzaSyD8CadhUR1Mp-1bc7YBWE5wO5KzyqFXVh4",
           authDomain: "game-dave.firebaseapp.com",
           databaseURL: "https://game-dave-default-rtdb.firebaseio.com",
@@ -370,13 +370,13 @@
           storageBucket: "game-dave.firebasestorage.app",
           messagingSenderId: "1093948242108",
           appId: "1:1093948242108:web:5a03f546e173a233a9b8b9"
-        };
+                };
 
-        // Initialize Firebase (disabled due to CDN ES module incompatibility)
-        let db = null;
-        let firebaseEnabled = false; // Disabled - using localStorage instead
-        let firebaseWritesEnabled = false;
-        let isLoadingFromFirebase = false; // prevent infinite loops
+                // Initialize Firebase variables (module initializer will enable if successful)
+                let db = null;
+                let firebaseEnabled = false; // will be set true if module init succeeds
+                let firebaseWritesEnabled = false;
+                let isLoadingFromFirebase = false; // prevent infinite loops
 
         const app = {
             view: 'dashboard',
@@ -527,11 +527,92 @@
             scoringStep: 1
         };
 
-        // Local Storage Persistence (fallback for Firebase unavailability)
+        // Real-time Sync via WebSocket
+        let syncWs = null;
+        let syncEnabled = true;
+        // Change to your production sync server URL (e.g., https://my-sync-server.herokuapp.com)
+        const SYNC_SERVER_URL = localStorage.getItem('syncServerUrl') || 'ws://localhost:8080';
+        let isApplyingSyncUpdate = false; // prevent feedback loop when remote updates arrive
+
+        function connectToSyncServer() {
+            if (!syncEnabled) {
+                console.log('Sync disabled; skipping WebSocket connection');
+                return;
+            }
+
+            try {
+                syncWs = new WebSocket(SYNC_SERVER_URL);
+
+                syncWs.onopen = () => {
+                    console.log('Connected to sync server:', SYNC_SERVER_URL);
+                };
+
+                syncWs.onmessage = (event) => {
+                    try {
+                        const payload = JSON.parse(event.data);
+                        if (payload.type === 'sync' && payload.data) {
+                            isApplyingSyncUpdate = true;
+                            // Merge remote state into local app
+                            Object.keys(payload.data).forEach(key => {
+                                app[key] = payload.data[key];
+                            });
+                            render();
+                            saveAppToLocalStorage();
+                            isApplyingSyncUpdate = false;
+                            console.log('Synced state from server');
+                        }
+                    } catch (err) {
+                        console.error('Error processing sync message:', err);
+                    }
+                };
+
+                syncWs.onerror = (err) => {
+                    console.warn('Sync server connection error (will retry):', err);
+                };
+
+                syncWs.onclose = () => {
+                    console.log('Disconnected from sync server; will retry in 5s');
+                    setTimeout(connectToSyncServer, 5000); // auto-reconnect
+                };
+            } catch (err) {
+                console.warn('Failed to connect to sync server:', err);
+                setTimeout(connectToSyncServer, 5000);
+            }
+        }
+
+        function broadcastAppStateToSync() {
+            if (!syncEnabled || !syncWs || syncWs.readyState !== WebSocket.OPEN || isApplyingSyncUpdate) {
+                return;
+            }
+            try {
+                syncWs.send(JSON.stringify({ type: 'update', data: app }));
+                console.log('Broadcasted app state to sync server');
+            } catch (err) {
+                console.warn('Failed to broadcast to sync server:', err);
+            }
+        }
+        function saveAppToFirebase() {
+            // Primary local save + broadcast. If Firebase is enabled, also write to DB.
+            saveAppToLocalStorage();
+            broadcastAppStateToSync();
+
+            if (firebaseEnabled && window.firebaseApi && typeof window.firebaseApi.writeApp === 'function' && firebaseWritesEnabled) {
+                try {
+                    window.firebaseApi.writeApp(app).then(() => {
+                        console.log('Saved app state to Firebase');
+                    }).catch(err => {
+                        console.warn('Failed to save to Firebase:', err);
+                    });
+                } catch (err) {
+                    console.warn('Firebase write error:', err);
+                }
+            }
+        }
+
+        // Local Storage Persistence
         function saveAppToLocalStorage() {
             try {
                 localStorage.setItem('kitchenBattleApp', JSON.stringify(app));
-                console.log('App state saved to localStorage');
             } catch (err) {
                 console.warn('localStorage save failed:', err);
             }
@@ -542,7 +623,6 @@
                 const saved = localStorage.getItem('kitchenBattleApp');
                 if (saved) {
                     const data = JSON.parse(saved);
-                    // Merge loaded data into app, preserving functions
                     Object.keys(data).forEach(key => {
                         app[key] = data[key];
                     });
@@ -552,12 +632,6 @@
             } catch (err) {
                 console.warn('localStorage load failed:', err);
             }
-        }
-
-        // Firebase Sync Functions (stubbed out since Firebase is unavailable)
-        function saveAppToFirebase() {
-            // Firebase unavailable; fall back to localStorage
-            saveAppToLocalStorage();
         }
 
         // Helper: convert objects with numeric keys into arrays recursively
@@ -583,20 +657,18 @@
 
         function loadAppFromFirebase() {
             if (!firebaseEnabled) { console.log('Firebase load skipped (disabled)'); return; }
-            if (!db) { console.log('Firebase load skipped (db not initialized)'); return; }
+            if (!window.firebaseApi || typeof window.firebaseApi.readApp !== 'function') { console.log('Firebase load skipped (api not ready)'); return; }
             isLoadingFromFirebase = true;
-            db.ref('app').once('value', snapshot => {
-                if (snapshot.exists()) {
-                    const data = snapshot.val();
+            window.firebaseApi.readApp().then(data => {
+                if (data) {
                     const normalized = normalizeFirebaseData(data);
-                    // Merge carefully to keep functions and defaults
                     Object.keys(normalized).forEach(key => {
                         app[key] = normalized[key];
                     });
                     render();
                 }
                 isLoadingFromFirebase = false;
-            }, err => {
+            }).catch(err => {
                 console.error('Firebase read error:', err);
                 isLoadingFromFirebase = false;
             });
@@ -604,10 +676,9 @@
 
         function listenToFirebaseChanges() {
             if (!firebaseEnabled) { console.log('Firebase listener not started (disabled)'); return; }
-            if (!db) { console.log('Firebase listener not started (db not initialized)'); return; }
-            db.ref('app').on('value', snapshot => {
-                if (snapshot.exists() && !isLoadingFromFirebase) {
-                    const data = snapshot.val();
+            if (!window.firebaseApi || typeof window.firebaseApi.subscribeApp !== 'function') { console.log('Firebase listener not started (api not ready)'); return; }
+            window.firebaseApi.subscribeApp((data) => {
+                if (data && !isLoadingFromFirebase) {
                     const normalized = normalizeFirebaseData(data);
                     Object.keys(normalized).forEach(key => {
                         app[key] = normalized[key];
@@ -617,8 +688,16 @@
             });
         }
 
-        // Load initial data and listen for changes (using localStorage instead)
+        // Startup: Load from localStorage and connect to sync server
         loadAppFromLocalStorage();
+        connectToSyncServer();
+
+        // If Firebase module initializes later, start load/listen when ready
+        window.addEventListener('firebase-ready', () => {
+            console.log('firebase-ready event received; starting Firebase sync');
+            try { loadAppFromFirebase(); } catch (e) { console.warn(e); }
+            try { listenToFirebaseChanges(); } catch (e) { console.warn(e); }
+        });
 
         function getTotalScore(teams) {
             return teams.reduce((sum, team) => sum + team.score, 0);
@@ -1210,5 +1289,53 @@
         // Initial render
         render();
     </script>
+
+    <!-- Firebase modular SDK initializer (safe, non-blocking). Tries to initialize and
+         exposes window.firebaseApi with readApp/subscribeApp/writeApp helpers. -->
+    <script type="module">
+        (async () => {
+            try {
+                // Import modular Firebase SDK over CDN
+                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js');
+                const { getDatabase, ref, set, onValue, get } = await import('https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js');
+
+                if (!window.firebaseConfig) {
+                    console.warn('No firebaseConfig found on window; skipping Firebase init');
+                    return;
+                }
+
+                const fbApp = initializeApp(window.firebaseConfig);
+                const database = getDatabase(fbApp);
+
+                // Mark enabled and expose a small API compatible with the app's usage
+                window.db = database;
+                window.firebaseEnabled = true;
+                window.firebaseWritesEnabled = true;
+
+                window.firebaseApi = {
+                    readApp: async () => {
+                        const snap = await get(ref(database, 'app'));
+                        return snap && snap.exists() ? snap.val() : null;
+                    },
+                    subscribeApp: (callback) => {
+                        return onValue(ref(database, 'app'), (snapshot) => {
+                            callback(snapshot && snapshot.exists() ? snapshot.val() : null);
+                        });
+                    },
+                    writeApp: async (data) => {
+                        await set(ref(database, 'app'), data);
+                    }
+                };
+
+                console.log('Firebase initialized (modular).');
+                // Notify the page that firebase is ready
+                window.dispatchEvent(new Event('firebase-ready'));
+            } catch (err) {
+                console.warn('Firebase modular SDK failed to initialize:', err);
+                window.firebaseEnabled = false;
+            }
+        })();
+    </script>
+
 </body>
 </html>
