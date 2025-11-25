@@ -374,9 +374,9 @@
         // Initialize Firebase (guarded)
         let db = null;
         // Toggle this to `true` to enable realtime reads. Writes are controlled separately.
-        let firebaseEnabled = true; // reads-only by default for this test
+        let firebaseEnabled = true;
         // Set to `true` to allow writes. Keep `false` to make reads-only.
-        let firebaseWritesEnabled = false;
+        let firebaseWritesEnabled = true;
         try {
             if (window.firebase && typeof firebase.initializeApp === 'function' && typeof firebase.database === 'function') {
                 firebase.initializeApp(firebaseConfig);
