@@ -355,9 +355,10 @@
 
     <div id="app"></div>
 
-    <!-- Firebase SDK (v8 - older compat build guaranteed to work in simple HTML) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- Firebase SDK disabled (CDN compatibility issues) - using localStorage for persistence -->
+    <!-- Uncomment and use Firebase SDK when a working compat build is available -->
+    <!-- <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script> -->
+    <!-- <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script> -->
 
     <script>
         // Firebase Configuration
@@ -371,25 +372,10 @@
           appId: "1:1093948242108:web:5a03f546e173a233a9b8b9"
         };
 
-        // Initialize Firebase (guarded)
+        // Initialize Firebase (disabled due to CDN ES module incompatibility)
         let db = null;
-        // Toggle this to `true` to enable realtime reads. Writes are controlled separately.
-        let firebaseEnabled = true;
-        // Set to `true` to allow writes. Keep `false` to make reads-only.
-        let firebaseWritesEnabled = true;
-        try {
-            if (window.firebase && typeof firebase.initializeApp === 'function' && typeof firebase.database === 'function') {
-                firebase.initializeApp(firebaseConfig);
-                db = firebase.database();
-                console.log('Firebase initialized (compat API detected).');
-            } else {
-                console.warn('Firebase SDK not available or incompatible; realtime disabled.');
-                firebaseEnabled = false;
-            }
-        } catch (err) {
-            console.error('Firebase initialization error:', err);
-            firebaseEnabled = false;
-        }
+        let firebaseEnabled = false; // Disabled - using localStorage instead
+        let firebaseWritesEnabled = false;
         let isLoadingFromFirebase = false; // prevent infinite loops
 
         const app = {
@@ -541,17 +527,37 @@
             scoringStep: 1
         };
 
-        // Firebase Sync Functions
-        function saveAppToFirebase() {
-            if (!firebaseEnabled || !firebaseWritesEnabled) { console.log('Firebase save suppressed (reads-only)'); return; }
-            if (!db) { console.warn('Firebase DB not initialized; save skipped'); return; }
-            if (isLoadingFromFirebase) return; // don't save while loading
-            // Save a copy without functions or DOM refs
+        // Local Storage Persistence (fallback for Firebase unavailability)
+        function saveAppToLocalStorage() {
             try {
-                db.ref('app').set(app).catch(err => console.error('Firebase save error:', err));
+                localStorage.setItem('kitchenBattleApp', JSON.stringify(app));
+                console.log('App state saved to localStorage');
             } catch (err) {
-                console.error('Firebase set error:', err);
+                console.warn('localStorage save failed:', err);
             }
+        }
+
+        function loadAppFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem('kitchenBattleApp');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    // Merge loaded data into app, preserving functions
+                    Object.keys(data).forEach(key => {
+                        app[key] = data[key];
+                    });
+                    console.log('App state loaded from localStorage');
+                    render();
+                }
+            } catch (err) {
+                console.warn('localStorage load failed:', err);
+            }
+        }
+
+        // Firebase Sync Functions (stubbed out since Firebase is unavailable)
+        function saveAppToFirebase() {
+            // Firebase unavailable; fall back to localStorage
+            saveAppToLocalStorage();
         }
 
         // Helper: convert objects with numeric keys into arrays recursively
@@ -611,13 +617,8 @@
             });
         }
 
-        // Load initial data and listen for changes (skipped when firebaseEnabled=false)
-        if (firebaseEnabled) {
-            loadAppFromFirebase();
-            setTimeout(listenToFirebaseChanges, 1000); // listen after initial load
-        } else {
-            console.log('Realtime Firebase sync is currently disabled. Set `firebaseEnabled = true` to re-enable.');
-        }
+        // Load initial data and listen for changes (using localStorage instead)
+        loadAppFromLocalStorage();
 
         function getTotalScore(teams) {
             return teams.reduce((sum, team) => sum + team.score, 0);
