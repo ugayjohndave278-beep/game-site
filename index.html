@@ -372,11 +372,16 @@
           appId: "1:1093948242108:web:5a03f546e173a233a9b8b9"
                 };
 
-                // Initialize Firebase variables (module initializer will enable if successful)
-                let db = null;
-                let firebaseEnabled = false; // will be set true if module init succeeds
-                let firebaseWritesEnabled = false;
-                let isLoadingFromFirebase = false; // prevent infinite loops
+                // Initialize Firebase variables on window (so module initializer can modify them)
+                window.db = null;
+                window.firebaseEnabled = false; // module initializer will set true if successful
+                window.firebaseWritesEnabled = false;
+                window.isLoadingFromFirebase = false; // prevent infinite loops
+                
+                // Convenience accessors for local scope
+                const getFirebaseEnabled = () => window.firebaseEnabled;
+                const getFirebaseWritesEnabled = () => window.firebaseWritesEnabled;
+                let isLoadingFromFirebase = false; // local copy for main script
 
         const app = {
             view: 'dashboard',
@@ -597,7 +602,7 @@
             saveAppToLocalStorage();
             broadcastAppStateToSync();
 
-            if (firebaseEnabled && window.firebaseApi && typeof window.firebaseApi.writeApp === 'function' && firebaseWritesEnabled) {
+            if (window.firebaseEnabled && window.firebaseApi && typeof window.firebaseApi.writeApp === 'function' && window.firebaseWritesEnabled) {
                 try {
                     console.log('Writing app state to Firebase:', app);
                     window.firebaseApi.writeApp(app).then(() => {
@@ -609,7 +614,7 @@
                     console.error('Firebase write error:', err);
                 }
             } else {
-                console.warn('Firebase write skipped: enabled=', firebaseEnabled, 'api=', !!window.firebaseApi, 'writesEnabled=', firebaseWritesEnabled);
+                console.warn('Firebase write skipped: enabled=', window.firebaseEnabled, 'api=', !!window.firebaseApi, 'writesEnabled=', window.firebaseWritesEnabled);
             }
         }
 
@@ -660,9 +665,9 @@
         }
 
         function loadAppFromFirebase() {
-            if (!firebaseEnabled) { console.log('Firebase load skipped (disabled)'); return; }
+            if (!window.firebaseEnabled) { console.log('Firebase load skipped (disabled)'); return; }
             if (!window.firebaseApi || typeof window.firebaseApi.readApp !== 'function') { console.log('Firebase load skipped (api not ready)'); return; }
-            isLoadingFromFirebase = true;
+            window.isLoadingFromFirebase = true;
             window.firebaseApi.readApp().then(data => {
                 if (data) {
                     const normalized = normalizeFirebaseData(data);
@@ -671,20 +676,20 @@
                     });
                     render();
                 }
-                isLoadingFromFirebase = false;
+                window.isLoadingFromFirebase = false;
             }).catch(err => {
                 console.error('Firebase read error:', err);
-                isLoadingFromFirebase = false;
+                window.isLoadingFromFirebase = false;
             });
         }
 
         function listenToFirebaseChanges() {
-            if (!firebaseEnabled) { console.log('Firebase listener not started (disabled)'); return; }
+            if (!window.firebaseEnabled) { console.log('Firebase listener not started (disabled)'); return; }
             if (!window.firebaseApi || typeof window.firebaseApi.subscribeApp !== 'function') { console.log('Firebase listener not started (api not ready)'); return; }
             console.log('Starting Firebase listener...');
             window.firebaseApi.subscribeApp((data) => {
                 console.log('Firebase listener received data:', data);
-                if (data && !isLoadingFromFirebase) {
+                if (data && !window.isLoadingFromFirebase) {
                     console.log('Merging Firebase data into app state...');
                     const normalized = normalizeFirebaseData(data);
                     Object.keys(normalized).forEach(key => {
@@ -692,7 +697,7 @@
                     });
                     render();
                     console.log('App synced from Firebase');
-                } else if (isLoadingFromFirebase) {
+                } else if (window.isLoadingFromFirebase) {
                     console.log('Skipped sync: currently loading from Firebase (prevent loop)');
                 }
             });
