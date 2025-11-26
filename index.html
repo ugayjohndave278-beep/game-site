@@ -599,14 +599,17 @@
 
             if (firebaseEnabled && window.firebaseApi && typeof window.firebaseApi.writeApp === 'function' && firebaseWritesEnabled) {
                 try {
+                    console.log('Writing app state to Firebase:', app);
                     window.firebaseApi.writeApp(app).then(() => {
-                        console.log('Saved app state to Firebase');
+                        console.log('✅ Saved app state to Firebase');
                     }).catch(err => {
-                        console.warn('Failed to save to Firebase:', err);
+                        console.error('❌ Failed to save to Firebase:', err);
                     });
                 } catch (err) {
-                    console.warn('Firebase write error:', err);
+                    console.error('Firebase write error:', err);
                 }
+            } else {
+                console.warn('Firebase write skipped: enabled=', firebaseEnabled, 'api=', !!window.firebaseApi, 'writesEnabled=', firebaseWritesEnabled);
             }
         }
 
@@ -678,13 +681,19 @@
         function listenToFirebaseChanges() {
             if (!firebaseEnabled) { console.log('Firebase listener not started (disabled)'); return; }
             if (!window.firebaseApi || typeof window.firebaseApi.subscribeApp !== 'function') { console.log('Firebase listener not started (api not ready)'); return; }
+            console.log('Starting Firebase listener...');
             window.firebaseApi.subscribeApp((data) => {
+                console.log('Firebase listener received data:', data);
                 if (data && !isLoadingFromFirebase) {
+                    console.log('Merging Firebase data into app state...');
                     const normalized = normalizeFirebaseData(data);
                     Object.keys(normalized).forEach(key => {
                         app[key] = normalized[key];
                     });
                     render();
+                    console.log('App synced from Firebase');
+                } else if (isLoadingFromFirebase) {
+                    console.log('Skipped sync: currently loading from Firebase (prevent loop)');
                 }
             });
         }
@@ -1319,20 +1328,23 @@
                         return snap && snap.exists() ? snap.val() : null;
                     },
                     subscribeApp: (callback) => {
+                        console.log('Setting up Firebase onValue listener for app path...');
                         return onValue(ref(database, 'app'), (snapshot) => {
+                            console.log('onValue triggered. Snapshot exists:', snapshot.exists());
                             callback(snapshot && snapshot.exists() ? snapshot.val() : null);
                         });
                     },
                     writeApp: async (data) => {
+                        console.log('Firebase writeApp called with:', data);
                         await set(ref(database, 'app'), data);
                     }
                 };
 
-                console.log('Firebase initialized (modular).');
+                console.log('✅ Firebase initialized (modular). firebaseEnabled=true');
                 // Notify the page that firebase is ready
                 window.dispatchEvent(new Event('firebase-ready'));
             } catch (err) {
-                console.warn('Firebase modular SDK failed to initialize:', err);
+                console.error('❌ Firebase modular SDK failed to initialize:', err);
                 window.firebaseEnabled = false;
             }
         })();
