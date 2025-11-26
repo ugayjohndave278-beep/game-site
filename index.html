@@ -228,6 +228,120 @@
             position: relative;
             z-index: 1;
         }
+
+        /* 3D View Styles */
+        #three-d-view {
+            display: none;
+        }
+
+        #three-d-view.active {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 16px;
+            margin: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(to bottom, #1e3a8a 0%, #0c4a6e 50%, #164e63 100%);
+            z-index: 1000;
+        }
+
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            background: linear-gradient(to bottom, #1e3a8a 0%, #0c4a6e 50%, #164e63 100%);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .three-d-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 8px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .three-d-toolbar h2 {
+            color: white;
+            margin: 0;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .three-d-toolbar button {
+            background: #3b82f6;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            margin: 0;
+        }
+
+        .three-d-toolbar button:hover {
+            background: #2563eb;
+        }
+
+        .three-d-toolbar button.danger {
+            background: #ef4444;
+        }
+
+        .three-d-toolbar button.danger:hover {
+            background: #dc2626;
+        }
+
+        .team-info-3d {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .team-card-3d {
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: white;
+            border: 2px solid;
+            text-align: center;
+            min-width: 150px;
+        }
+
+        .team-card-3d.left {
+            border-color: #ef4444;
+        }
+
+        .team-card-3d.right {
+            border-color: #3b82f6;
+        }
+
+        .team-card-3d h3 {
+            margin: 0 0 4px 0;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .team-card-3d p {
+            margin: 0;
+            font-size: 11px;
+            opacity: 0.9;
+        }
+
+        .team-card-3d .score {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 4px;
+        }
         
         /* Responsive Mobile Styles */
         @media (max-width: 768px) {
@@ -354,6 +468,31 @@
     </div>
 
     <div id="app"></div>
+
+    <!-- 3D View Container -->
+    <div id="three-d-view">
+        <div class="three-d-toolbar">
+            <h2>🎮 3D Battle Arena</h2>
+            <button onclick="toggleView('dashboard')">← Back to Dashboard</button>
+            <button onclick="if(confirm('Reset all scores to 0?')) { resetAllScores(); }">🔄 Reset Scores</button>
+            <button onclick="toggleView('settings')">⚙️ Settings</button>
+        </div>
+        <div id="canvas-container">
+            <canvas id="renderCanvas"></canvas>
+        </div>
+        <div class="team-info-3d">
+            <div class="team-card-3d left">
+                <h3 id="left-team-name-3d">Team 1</h3>
+                <p id="left-team-members-3d">Members: 0</p>
+                <div class="score" id="left-score-3d">0</div>
+            </div>
+            <div class="team-card-3d right">
+                <h3 id="right-team-name-3d">Team 2</h3>
+                <p id="right-team-members-3d">Members: 0</p>
+                <div class="score" id="right-score-3d">0</div>
+            </div>
+        </div>
+    </div>
 
     <!-- Firebase SDK disabled (CDN compatibility issues) - using localStorage for persistence -->
     <!-- Uncomment and use Firebase SDK when a working compat build is available -->
@@ -1003,9 +1142,12 @@
                     ` : ''}
                 </div>
 
-                <div class="button-container" style="display: flex; gap: 16px; justify-content: center; margin-bottom: 32px;">
+                <div class="button-container" style="display: flex; gap: 16px; justify-content: center; margin-bottom: 32px; flex-wrap: wrap;">
                     <button onclick="app.view='scoring'; app.scoringStep=1; app.selectedKitchen=null; app.selectedTeam=null; app.selectedMember=null; render();" style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: white; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 1.125rem; box-shadow: 0 8px 24px rgba(20, 184, 166, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);">
                         📊 Team Leader Scoring
+                    </button>
+                    <button onclick="toggleView('3d');" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 1.125rem; box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);">
+                        🎮 3D Battle Arena
                     </button>
                     <button onclick="app.showSettings=!app.showSettings; render();" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 1.125rem; box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);">
                         ⚙️ Settings
@@ -1350,6 +1492,160 @@
                 </div>
             `;
         }
+
+        // ===== 3D VIEW FUNCTIONALITY =====
+        let scene, camera, engine, characterLeft, characterRight;
+        let threeDInitialized = false;
+
+        function toggleView(newView) {
+            if (newView === '3d') {
+                app.view = '3d';
+                document.getElementById('app').style.display = 'none';
+                document.getElementById('three-d-view').classList.add('active');
+                if (!threeDInitialized) {
+                    initializeThreeD();
+                    threeDInitialized = true;
+                }
+                update3DScene();
+            } else if (newView === 'dashboard') {
+                app.view = 'dashboard';
+                app.showSettings = false;
+                document.getElementById('three-d-view').classList.remove('active');
+                document.getElementById('app').style.display = 'block';
+                render();
+            } else if (newView === 'settings') {
+                app.view = 'dashboard';
+                app.showSettings = true;
+                document.getElementById('three-d-view').classList.remove('active');
+                document.getElementById('app').style.display = 'block';
+                render();
+            }
+        }
+
+        async function initializeThreeD() {
+            // Load Babylon.js from CDN
+            if (!window.BABYLON) {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.babylonjs.com/babylon.js';
+                document.head.appendChild(script);
+                await new Promise(resolve => script.onload = resolve);
+            }
+
+            const canvas = document.getElementById('renderCanvas');
+            engine = new BABYLON.Engine(canvas, true);
+
+            // Create scene
+            scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color3(0.1, 0.2, 0.3);
+            scene.collisionsEnabled = true;
+
+            // Create camera
+            camera = new BABYLON.ArcRotateCamera('camera', Math.PI / 2, Math.PI / 2.5, 60, new BABYLON.Vector3(0, 10, 0), scene);
+            camera.attachControl(canvas, true);
+            camera.lowerRadiusLimit = 30;
+            camera.upperRadiusLimit = 100;
+            camera.wheelPrecision = 50;
+
+            // Lighting
+            const light1 = new BABYLON.HemisphericLight('light1', new BABYLON.Vector3(1, 1, 1), scene);
+            light1.intensity = 0.7;
+            const light2 = new BABYLON.PointLight('light2', new BABYLON.Vector3(0, 20, 0), scene);
+            light2.intensity = 0.8;
+
+            // Create ground
+            const ground = BABYLON.MeshBuilder.CreateGround('ground', { width: 100, height: 100 }, scene);
+            const groundMat = new BABYLON.StandardMaterial('groundMat', scene);
+            groundMat.diffuse = new BABYLON.Color3(0.2, 0.4, 0.2);
+            ground.material = groundMat;
+
+            // Create character models (simple cubes for now, representing characters)
+            createCharacter(-15, 0, 'left');
+            createCharacter(15, 0, 'right');
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                engine.resize();
+            });
+
+            // Render loop
+            engine.runRenderLoop(() => {
+                scene.render();
+            });
+        }
+
+        function createCharacter(x, z, team) {
+            // Create a simple humanoid shape using basic meshes
+            const character = BABYLON.MeshBuilder.CreateBox('character_' + team, { size: 1 }, scene);
+            character.position = new BABYLON.Vector3(x, 1, z);
+
+            // Material based on team
+            const mat = new BABYLON.StandardMaterial('mat_' + team, scene);
+            mat.diffuse = team === 'left' ? new BABYLON.Color3(1, 0.2, 0.2) : new BABYLON.Color3(0.2, 0.5, 1);
+            mat.specularColor = new BABYLON.Color3(1, 1, 1);
+            character.material = mat;
+
+            // Head
+            const head = BABYLON.MeshBuilder.CreateSphere('head_' + team, { segments: 16 }, scene);
+            head.scaling = new BABYLON.Vector3(0.4, 0.5, 0.4);
+            head.position.y = 1.4;
+            head.material = mat;
+            head.parent = character;
+
+            if (team === 'left') {
+                characterLeft = character;
+            } else {
+                characterRight = character;
+            }
+        }
+
+        function update3DScene() {
+            const totalLeft = app.leftTeams.reduce((sum, t) => sum + t.score, 0);
+            const totalRight = app.rightTeams.reduce((sum, t) => sum + t.score, 0);
+            const maxScore = app.maxPoints;
+
+            // Update left team info
+            const leftMembers = app.leftTeams.reduce((sum, t) => sum + t.members.length, 0);
+            document.getElementById('left-team-name-3d').textContent = app.leftGroupName;
+            document.getElementById('left-team-members-3d').textContent = `Members: ${leftMembers}`;
+            document.getElementById('left-score-3d').textContent = totalLeft;
+
+            // Update right team info
+            const rightMembers = app.rightTeams.reduce((sum, t) => sum + t.members.length, 0);
+            document.getElementById('right-team-name-3d').textContent = app.rightGroupName;
+            document.getElementById('right-team-members-3d').textContent = `Members: ${rightMembers}`;
+            document.getElementById('right-score-3d').textContent = totalRight;
+
+            // Animate characters based on scores
+            if (characterLeft) {
+                const leftProgress = Math.min(totalLeft / maxScore, 1);
+                characterLeft.position.x = -15 + (leftProgress * 12);
+                characterLeft.rotation.y += 0.001;
+            }
+
+            if (characterRight) {
+                const rightProgress = Math.min(totalRight / maxScore, 1);
+                characterRight.position.x = 15 - (rightProgress * 12);
+                characterRight.rotation.y -= 0.001;
+            }
+        }
+
+        // Update 3D scene on data changes
+        const originalSaveToFirebase = window.saveAppToFirebase ? window.saveAppToFirebase : () => {};
+        window.saveAppToFirebase = function() {
+            originalSaveToFirebase.call(this);
+            if (app.view === '3d') {
+                update3DScene();
+            }
+        };
+
+        // Listen for Firebase changes while in 3D view
+        const originalListenToFirebase = window.listenToFirebaseChanges ? window.listenToFirebaseChanges : () => {};
+        window.listenToFirebaseChanges = function() {
+            originalListenToFirebase.call(this);
+            if (app.view === '3d') {
+                update3DScene();
+            }
+        };
 
         // Initial render
         render();
