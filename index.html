@@ -1494,7 +1494,8 @@
         }
 
         // ===== 3D VIEW FUNCTIONALITY =====
-        let scene, camera, engine, characterLeft, characterRight;
+        let scene, camera, engine;
+        let chefCharacters = []; // Array of all chef characters
         let threeDInitialized = false;
 
         function toggleView(newView) {
@@ -1536,31 +1537,37 @@
 
             // Create scene
             scene = new BABYLON.Scene(engine);
-            scene.clearColor = new BABYLON.Color3(0.1, 0.2, 0.3);
+            scene.clearColor = new BABYLON.Color3(0.95, 0.95, 0.9); // Light cream kitchen color
             scene.collisionsEnabled = true;
 
-            // Create camera
-            camera = new BABYLON.ArcRotateCamera('camera', Math.PI / 2, Math.PI / 2.5, 60, new BABYLON.Vector3(0, 10, 0), scene);
+            // Create camera - positioned to see kitchen from above
+            camera = new BABYLON.ArcRotateCamera('camera', Math.PI / 2, Math.PI / 2.3, 80, new BABYLON.Vector3(0, 8, 0), scene);
             camera.attachControl(canvas, true);
-            camera.lowerRadiusLimit = 30;
-            camera.upperRadiusLimit = 100;
+            camera.lowerRadiusLimit = 40;
+            camera.upperRadiusLimit = 150;
             camera.wheelPrecision = 50;
 
-            // Lighting
+            // Lighting for kitchen
             const light1 = new BABYLON.HemisphericLight('light1', new BABYLON.Vector3(1, 1, 1), scene);
-            light1.intensity = 0.7;
-            const light2 = new BABYLON.PointLight('light2', new BABYLON.Vector3(0, 20, 0), scene);
-            light2.intensity = 0.8;
+            light1.intensity = 0.8;
+            const light2 = new BABYLON.PointLight('light2', new BABYLON.Vector3(0, 30, 0), scene);
+            light2.intensity = 0.9;
+            light2.range = 200;
 
-            // Create ground
-            const ground = BABYLON.MeshBuilder.CreateGround('ground', { width: 100, height: 100 }, scene);
-            const groundMat = new BABYLON.StandardMaterial('groundMat', scene);
-            groundMat.diffuse = new BABYLON.Color3(0.2, 0.4, 0.2);
-            ground.material = groundMat;
+            // Create kitchen floor (tile pattern)
+            const floor = BABYLON.MeshBuilder.CreateGround('floor', { width: 120, height: 100 }, scene);
+            const floorMat = new BABYLON.StandardMaterial('floorMat', scene);
+            floorMat.diffuse = new BABYLON.Color3(0.8, 0.75, 0.7); // Kitchen tile color
+            floor.material = floorMat;
 
-            // Create character models (simple cubes for now, representing characters)
-            createCharacter(-15, 0, 'left');
-            createCharacter(15, 0, 'right');
+            // Create kitchen walls
+            createKitchenWalls();
+
+            // Create kitchen equipment
+            createKitchenEquipment();
+
+            // Create all chef characters
+            createAllChefs();
 
             // Handle window resize
             window.addEventListener('resize', () => {
@@ -1573,29 +1580,212 @@
             });
         }
 
-        function createCharacter(x, z, team) {
-            // Create a simple humanoid shape using basic meshes
-            const character = BABYLON.MeshBuilder.CreateBox('character_' + team, { size: 1 }, scene);
-            character.position = new BABYLON.Vector3(x, 1, z);
+        function createKitchenWalls() {
+            // Back wall
+            const backWall = BABYLON.MeshBuilder.CreateBox('backWall', { width: 120, height: 20, depth: 1 }, scene);
+            backWall.position = new BABYLON.Vector3(0, 10, -50);
+            const wallMat = new BABYLON.StandardMaterial('wallMat', scene);
+            wallMat.diffuse = new BABYLON.Color3(0.9, 0.9, 0.85);
+            backWall.material = wallMat;
 
-            // Material based on team
-            const mat = new BABYLON.StandardMaterial('mat_' + team, scene);
-            mat.diffuse = team === 'left' ? new BABYLON.Color3(1, 0.2, 0.2) : new BABYLON.Color3(0.2, 0.5, 1);
-            mat.specularColor = new BABYLON.Color3(1, 1, 1);
-            character.material = mat;
+            // Left wall
+            const leftWall = BABYLON.MeshBuilder.CreateBox('leftWall', { width: 1, height: 20, depth: 100 }, scene);
+            leftWall.position = new BABYLON.Vector3(-60, 10, 0);
+            leftWall.material = wallMat;
+
+            // Right wall
+            const rightWall = BABYLON.MeshBuilder.CreateBox('rightWall', { width: 1, height: 20, depth: 100 }, scene);
+            rightWall.position = new BABYLON.Vector3(60, 10, 0);
+            rightWall.material = wallMat;
+
+            // Shelves on left wall
+            for (let i = 0; i < 3; i++) {
+                const shelf = BABYLON.MeshBuilder.CreateBox('shelf' + i, { width: 15, height: 0.5, depth: 8 }, scene);
+                shelf.position = new BABYLON.Vector3(-52, 6 + i * 4, -45);
+                const shelfMat = new BABYLON.StandardMaterial('shelfMat' + i, scene);
+                shelfMat.diffuse = new BABYLON.Color3(0.6, 0.4, 0.2); // Wood color
+                shelf.material = shelfMat;
+            }
+
+            // Shelves on right wall
+            for (let i = 0; i < 3; i++) {
+                const shelf = BABYLON.MeshBuilder.CreateBox('shelfR' + i, { width: 15, height: 0.5, depth: 8 }, scene);
+                shelf.position = new BABYLON.Vector3(52, 6 + i * 4, -45);
+                shelf.material = shelfMat;
+            }
+        }
+
+        function createKitchenEquipment() {
+            // Stove/Range in back
+            const stove = BABYLON.MeshBuilder.CreateBox('stove', { width: 12, height: 8, depth: 8 }, scene);
+            stove.position = new BABYLON.Vector3(0, 4, -40);
+            const stoveMat = new BABYLON.StandardMaterial('stoveMat', scene);
+            stoveMat.diffuse = new BABYLON.Color3(0.3, 0.3, 0.3); // Dark gray
+            stove.material = stoveMat;
+
+            // Countertop left
+            const counterLeft = BABYLON.MeshBuilder.CreateBox('counterLeft', { width: 25, height: 2, depth: 12 }, scene);
+            counterLeft.position = new BABYLON.Vector3(-25, 2, 15);
+            const counterMat = new BABYLON.StandardMaterial('counterMat', scene);
+            counterMat.diffuse = new BABYLON.Color3(0.7, 0.65, 0.6);
+            counterLeft.material = counterMat;
+
+            // Countertop right
+            const counterRight = BABYLON.MeshBuilder.CreateBox('counterRight', { width: 25, height: 2, depth: 12 }, scene);
+            counterRight.position = new BABYLON.Vector3(25, 2, 15);
+            counterRight.material = counterMat;
+
+            // Prep table center
+            const prepTable = BABYLON.MeshBuilder.CreateBox('prepTable', { width: 30, height: 2, depth: 12 }, scene);
+            prepTable.position = new BABYLON.Vector3(0, 2, 32);
+            prepTable.material = counterMat;
+        }
+
+        function createAllChefs() {
+            chefCharacters = [];
+            
+            // Flatten all team members
+            const leftMembers = [];
+            const rightMembers = [];
+            
+            app.leftTeams.forEach(team => {
+                team.members.forEach((member, idx) => {
+                    leftMembers.push({ name: member.name, index: idx });
+                });
+            });
+
+            app.rightTeams.forEach(team => {
+                team.members.forEach((member, idx) => {
+                    rightMembers.push({ name: member.name, index: idx });
+                });
+            });
+
+            // Left team chefs - spread across left side
+            leftMembers.forEach((member, idx) => {
+                const spacing = 8;
+                const rows = Math.ceil(leftMembers.length / 3);
+                const row = Math.floor(idx / 3);
+                const col = idx % 3;
+                
+                const x = -40 + col * spacing;
+                const z = -20 + row * spacing;
+                
+                const chef = createChef(x, z, 'left', member.name);
+                chefCharacters.push({ chef, team: 'left', index: idx });
+            });
+
+            // Right team chefs - spread across right side
+            rightMembers.forEach((member, idx) => {
+                const spacing = 8;
+                const rows = Math.ceil(rightMembers.length / 3);
+                const row = Math.floor(idx / 3);
+                const col = idx % 3;
+                
+                const x = 40 - col * spacing;
+                const z = -20 + row * spacing;
+                
+                const chef = createChef(x, z, 'right', member.name);
+                chefCharacters.push({ chef, team: 'right', index: idx });
+            });
+        }
+
+        function createChef(x, z, team, name) {
+            // Create parent mesh
+            const chef = new BABYLON.TransformNode('chef_' + name, scene);
+            chef.position = new BABYLON.Vector3(x, 0, z);
+
+            // Body (main torso)
+            const body = BABYLON.MeshBuilder.CreateBox('body', { width: 0.6, height: 1.2, depth: 0.4 }, scene);
+            body.position.y = 0.6;
+            const bodyMat = new BABYLON.StandardMaterial('bodyMat_' + name, scene);
+            bodyMat.diffuse = team === 'left' ? new BABYLON.Color3(1, 0.8, 0.2) : new BABYLON.Color3(0.2, 0.8, 1); // Yellow or blue shirt
+            body.material = bodyMat;
+            body.parent = chef;
+
+            // Chef's coat (white)
+            const coat = BABYLON.MeshBuilder.CreateBox('coat', { width: 0.7, height: 1.3, depth: 0.5 }, scene);
+            coat.position.y = 0.6;
+            const coatMat = new BABYLON.StandardMaterial('coatMat_' + name, scene);
+            coatMat.diffuse = new BABYLON.Color3(1, 1, 1); // White
+            coatMat.alpha = 0.7;
+            coat.material = coatMat;
+            coat.parent = chef;
 
             // Head
-            const head = BABYLON.MeshBuilder.CreateSphere('head_' + team, { segments: 16 }, scene);
-            head.scaling = new BABYLON.Vector3(0.4, 0.5, 0.4);
-            head.position.y = 1.4;
-            head.material = mat;
-            head.parent = character;
+            const head = BABYLON.MeshBuilder.CreateSphere('head_' + name, { segments: 16, diameter: 0.5 }, scene);
+            head.position.y = 1.8;
+            const headMat = new BABYLON.StandardMaterial('headMat_' + name, scene);
+            headMat.diffuse = new BABYLON.Color3(1, 0.85, 0.7); // Skin tone
+            head.material = headMat;
+            head.parent = chef;
 
-            if (team === 'left') {
-                characterLeft = character;
-            } else {
-                characterRight = character;
-            }
+            // Chef's hat
+            const hatBase = BABYLON.MeshBuilder.CreateCylinder('hatBase_' + name, { height: 0.8, diameterTop: 0.6, diameterBottom: 0.5 }, scene);
+            hatBase.position.y = 2.35;
+            const hatMat = new BABYLON.StandardMaterial('hatMat_' + name, scene);
+            hatMat.diffuse = new BABYLON.Color3(1, 1, 1); // White
+            hatBase.material = hatMat;
+            hatBase.parent = chef;
+
+            // Hat puff (top)
+            const hatPuff = BABYLON.MeshBuilder.CreateSphere('hatPuff_' + name, { segments: 16, diameter: 0.45 }, scene);
+            hatPuff.position.y = 2.9;
+            hatPuff.material = hatMat;
+            hatPuff.parent = chef;
+
+            // Eyes
+            const eyeLeft = BABYLON.MeshBuilder.CreateSphere('eyeLeft_' + name, { segments: 8, diameter: 0.12 }, scene);
+            eyeLeft.position = new BABYLON.Vector3(-0.1, 1.95, 0.2);
+            const eyeMat = new BABYLON.StandardMaterial('eyeMat_' + name, scene);
+            eyeMat.diffuse = new BABYLON.Color3(0, 0, 0); // Black
+            eyeLeft.material = eyeMat;
+            eyeLeft.parent = chef;
+
+            const eyeRight = BABYLON.MeshBuilder.CreateSphere('eyeRight_' + name, { segments: 8, diameter: 0.12 }, scene);
+            eyeRight.position = new BABYLON.Vector3(0.1, 1.95, 0.2);
+            eyeRight.material = eyeMat;
+            eyeRight.parent = chef;
+
+            // Mustache
+            const mustache = BABYLON.MeshBuilder.CreateBox('mustache_' + name, { width: 0.25, height: 0.08, depth: 0.05 }, scene);
+            mustache.position = new BABYLON.Vector3(0, 1.75, 0.25);
+            const stacheMat = new BABYLON.StandardMaterial('stacheMat_' + name, scene);
+            stacheMat.diffuse = new BABYLON.Color3(0.1, 0.1, 0.1); // Dark
+            mustache.material = stacheMat;
+            mustache.parent = chef;
+
+            // Arms
+            const armLeft = BABYLON.MeshBuilder.CreateBox('armLeft_' + name, { width: 0.2, height: 0.8, depth: 0.2 }, scene);
+            armLeft.position = new BABYLON.Vector3(-0.45, 1, 0);
+            const armMat = new BABYLON.StandardMaterial('armMat_' + name, scene);
+            armMat.diffuse = new BABYLON.Color3(1, 0.85, 0.7); // Skin
+            armLeft.material = armMat;
+            armLeft.parent = chef;
+
+            const armRight = BABYLON.MeshBuilder.CreateBox('armRight_' + name, { width: 0.2, height: 0.8, depth: 0.2 }, scene);
+            armRight.position = new BABYLON.Vector3(0.45, 1, 0);
+            armRight.material = armMat;
+            armRight.parent = chef;
+
+            // Legs
+            const legLeft = BABYLON.MeshBuilder.CreateBox('legLeft_' + name, { width: 0.2, height: 0.6, depth: 0.2 }, scene);
+            legLeft.position = new BABYLON.Vector3(-0.15, 0.25, 0);
+            const legMat = new BABYLON.StandardMaterial('legMat_' + name, scene);
+            legMat.diffuse = new BABYLON.Color3(0.2, 0.2, 0.2); // Dark pants
+            legLeft.material = legMat;
+            legLeft.parent = chef;
+
+            const legRight = BABYLON.MeshBuilder.CreateBox('legRight_' + name, { width: 0.2, height: 0.6, depth: 0.2 }, scene);
+            legRight.position = new BABYLON.Vector3(0.15, 0.25, 0);
+            legRight.material = legMat;
+            legRight.parent = chef;
+
+            // Store animation data
+            chef.animationTime = 0;
+            chef.team = team;
+            chef.initialPosition = chef.position.clone();
+
+            return chef;
         }
 
         function update3DScene() {
@@ -1615,18 +1805,31 @@
             document.getElementById('right-team-members-3d').textContent = `Members: ${rightMembers}`;
             document.getElementById('right-score-3d').textContent = totalRight;
 
-            // Animate characters based on scores
-            if (characterLeft) {
-                const leftProgress = Math.min(totalLeft / maxScore, 1);
-                characterLeft.position.x = -15 + (leftProgress * 12);
-                characterLeft.rotation.y += 0.001;
-            }
+            // Update all chef positions based on scores
+            chefCharacters.forEach(({ chef, team }) => {
+                if (team === 'left') {
+                    const leftProgress = Math.min(totalLeft / maxScore, 1);
+                    chef.position.z = chef.initialPosition.z + (leftProgress * 25);
+                } else {
+                    const rightProgress = Math.min(totalRight / maxScore, 1);
+                    chef.position.z = chef.initialPosition.z + (rightProgress * 25);
+                }
 
-            if (characterRight) {
-                const rightProgress = Math.min(totalRight / maxScore, 1);
-                characterRight.position.x = 15 - (rightProgress * 12);
-                characterRight.rotation.y -= 0.001;
-            }
+                // Animate walking
+                chef.animationTime = (chef.animationTime + 0.02) % (Math.PI * 2);
+                
+                // Arm swinging
+                chef.getChildren()[5].rotation.x = Math.sin(chef.animationTime) * 0.3; // Left arm
+                chef.getChildren()[6].rotation.x = Math.sin(chef.animationTime + Math.PI) * 0.3; // Right arm
+                
+                // Leg movement
+                chef.getChildren()[7].rotation.x = Math.sin(chef.animationTime) * 0.2; // Left leg
+                chef.getChildren()[8].rotation.x = Math.sin(chef.animationTime + Math.PI) * 0.2; // Right leg
+
+                // Slight vertical bob
+                const yBob = Math.sin(chef.animationTime * 2) * 0.05;
+                chef.position.y = 0 + yBob;
+            });
         }
 
         // Update 3D scene on data changes
