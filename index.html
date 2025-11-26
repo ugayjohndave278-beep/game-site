@@ -935,6 +935,30 @@
             try { showErrorOverlay(e.reason && e.reason.message ? e.reason.message : String(e.reason), e.reason && e.reason.stack ? e.reason.stack : null); } catch (err) { console.error(err); }
         });
 
+        function resetAllScores() {
+            // Reset all scores while preserving team and member names
+            const resetTeamScores = (team) => {
+                team.score = 0;
+                team.members.forEach(member => {
+                    member.scores = {
+                        sop: { uniformDress: 0, timekeeping: 0, hygiene: 0, total: 0 },
+                        safety: { foodHandling: 0, equipmentUse: 0, cleanliness: 0, total: 0 },
+                        policies: { compliance: 0, documentation: 0, communication: 0, total: 0 },
+                        processes: { efficiency: 0, quality: 0, consistency: 0, total: 0 },
+                        culture: { teamwork: 0, attitude: 0, respect: 0, total: 0 },
+                        performance: { speed: 0, accuracy: 0, initiative: 0, total: 0 }
+                    };
+                });
+            };
+            
+            app.leftTeams.forEach(resetTeamScores);
+            app.rightTeams.forEach(resetTeamScores);
+            
+            console.log('✅ All scores reset. Team and member names preserved.');
+            render();
+            saveAppToFirebase();
+        }
+
         function render() {
             try {
                 clearErrorOverlay();
@@ -1168,9 +1192,12 @@
                             </div>
                         </div>
                     </div>
-                    <div style="margin-top: 32px; text-align: center;">
+                    <div style="margin-top: 32px; text-align: center; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
                         <button onclick="app.showSettings=false; render();" style="background: linear-gradient(to right, #14b8a6, #3b82f6); color: white; padding: 12px 32px; border-radius: 8px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
                             Back to Dashboard
+                        </button>
+                        <button onclick="if(confirm('Reset all scores? Team and member names will be preserved.')) { resetAllScores(); }" style="background: linear-gradient(to right, #ef4444, #dc2626); color: white; padding: 12px 32px; border-radius: 8px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+                            🔄 Reset All Scores
                         </button>
                     </div>
 
