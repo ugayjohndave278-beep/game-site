@@ -692,11 +692,34 @@
                 if (data && !window.isLoadingFromFirebase) {
                     console.log('Merging Firebase data into app state...');
                     const normalized = normalizeFirebaseData(data);
+                    
+                    // Store current view state to preserve it after sync
+                    const prevView = app.view;
+                    const prevShowSettings = app.showSettings;
+                    const prevScoringStep = app.scoringStep;
+                    const prevSelectedKitchen = app.selectedKitchen;
+                    const prevSelectedTeam = app.selectedTeam;
+                    const prevSelectedMember = app.selectedMember;
+                    
+                    // Merge only the data fields, NOT the view state
                     Object.keys(normalized).forEach(key => {
+                        // Skip merging view state keys; keep local values
+                        if (['view', 'showSettings', 'scoringStep', 'selectedKitchen', 'selectedTeam', 'selectedMember'].includes(key)) {
+                            return;
+                        }
                         app[key] = normalized[key];
                     });
+                    
+                    // Restore view state so user stays on the same page
+                    app.view = prevView;
+                    app.showSettings = prevShowSettings;
+                    app.scoringStep = prevScoringStep;
+                    app.selectedKitchen = prevSelectedKitchen;
+                    app.selectedTeam = prevSelectedTeam;
+                    app.selectedMember = prevSelectedMember;
+                    
                     render();
-                    console.log('App synced from Firebase');
+                    console.log('App synced from Firebase (view preserved)');
                 } else if (window.isLoadingFromFirebase) {
                     console.log('Skipped sync: currently loading from Firebase (prevent loop)');
                 }
