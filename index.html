@@ -1008,7 +1008,7 @@
                                 <div style="font-size: 0.875rem; font-weight: 600; opacity: 0.95; position: relative; z-index: 1; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">Total Points</div>
                             </div>
                             ${topLeft.length > 0 ? `
-                                <div style="font-size: 0.875rem; color: #1f2937; margin-bottom: 16px; text-align: center; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 12px 16px; border-radius: 12px; border: 2px solid #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3), inset 0 1px 0 rgba(255,255,255,0.5);">
+                                <div style="position: sticky; top: 20px; font-size: 0.875rem; color: #1f2937; margin-bottom: 16px; text-align: center; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 12px 16px; border-radius: 12px; border: 2px solid #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3), inset 0 1px 0 rgba(255,255,255,0.5); z-index: 10;">
                                     <div style="font-weight: 700; margin-bottom: 8px; font-size: 1rem; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">⭐ Top Contributors</div>
                                     ${topLeft.map(c => `<div style="margin-bottom: 4px; text-shadow: 0 1px 2px rgba(0,0,0,0.05); font-weight: 600;">${c.member} (${c.team}) - ${c.score}pts</div>`).join('')}
                                 </div>
@@ -1066,7 +1066,7 @@
                                 <div style="font-size: 0.875rem; font-weight: 600; opacity: 0.95; position: relative; z-index: 1; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">Total Points</div>
                             </div>
                             ${topRight.length > 0 ? `
-                                <div style="font-size: 0.875rem; color: #1f2937; margin-bottom: 16px; text-align: center; background: linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%); padding: 12px 16px; border-radius: 12px; border: 2px solid #14b8a6; box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3), inset 0 1px 0 rgba(255,255,255,0.5);">
+                                <div style="position: sticky; top: 20px; font-size: 0.875rem; color: #1f2937; margin-bottom: 16px; text-align: center; background: linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%); padding: 12px 16px; border-radius: 12px; border: 2px solid #14b8a6; box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3), inset 0 1px 0 rgba(255,255,255,0.5); z-index: 10;">
                                     <div style="font-weight: 700; margin-bottom: 8px; font-size: 1rem; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">⭐ Top Contributors</div>
                                     ${topRight.map(c => `<div style="margin-bottom: 4px; text-shadow: 0 1px 2px rgba(0,0,0,0.05); font-weight: 600;">${c.member} (${c.team}) - ${c.score}pts</div>`).join('')}
                                 </div>
