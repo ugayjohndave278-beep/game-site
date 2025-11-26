@@ -529,7 +529,8 @@
 
         // Real-time Sync via WebSocket
         let syncWs = null;
-        let syncEnabled = true;
+        // Only enable WebSocket sync on localhost (development); disable on production
+        let syncEnabled = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         // Change to your production sync server URL (e.g., https://my-sync-server.herokuapp.com)
         const SYNC_SERVER_URL = localStorage.getItem('syncServerUrl') || 'ws://localhost:8080';
         let isApplyingSyncUpdate = false; // prevent feedback loop when remote updates arrive
